@@ -58,6 +58,7 @@ namespace SoLoud
 		result setParams(unsigned int aBaseFrequency = 1330, float aBaseSpeed = 10.0f, float aBaseDeclination = 0.5f, int aBaseWaveform = KW_TRIANGLE);
 		virtual ~Speech();
 		virtual AudioSourceInstance *createInstance();
+		virtual std::shared_ptr<AudioSourceInstance> createSharedInstance();
 	};
 
 	class SpeechInstance : public AudioSourceInstance

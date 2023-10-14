@@ -64,6 +64,7 @@ namespace SoLoud
 		result loadFile(File *aFile);
 		result loadMem(const unsigned char* aMem, unsigned int aLength, bool aCopy, bool aTakeOwnership);
 		virtual AudioSourceInstance *createInstance();
+		virtual std::shared_ptr<AudioSourceInstance> createSharedInstance();
 	};
 };
 

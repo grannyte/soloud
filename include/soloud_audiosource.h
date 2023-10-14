@@ -25,6 +25,8 @@ freely, subject to the following restrictions:
 #ifndef SOLOUD_AUDIOSOURCE_H
 #define SOLOUD_AUDIOSOURCE_H
 
+#include <memory>
+
 #include "soloud.h"
 #include "soloud_fader.h"
 #include "soloud_filter.h"
@@ -313,6 +315,8 @@ namespace SoLoud
 		virtual ~AudioSource();
 		// Create instance from the audio source. Called from within Soloud class.
 		virtual AudioSourceInstance *createInstance() = 0;
+		// Create shared_ptr instance from the audio source. Called from within Soloud class.
+		virtual std::shared_ptr<AudioSourceInstance> createSharedInstance() = 0;
 		// Stop all instances of this audio source
 		void stop();
 	};

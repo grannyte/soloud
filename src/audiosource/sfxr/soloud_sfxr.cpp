@@ -599,5 +599,10 @@ namespace SoLoud
 	{
 		return new SfxrInstance(this);
 	}
+	std::shared_ptr<AudioSourceInstance> Sfxr::createSharedInstance()
+	{
+		return std::make_shared<SfxrInstance>(this);
+
+	}
 
 };

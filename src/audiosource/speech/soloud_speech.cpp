@@ -145,4 +145,10 @@ namespace SoLoud
 	{
 		return new SpeechInstance(this);
 	}	
+
+
+	std::shared_ptr<AudioSourceInstance> Speech::createSharedInstance()
+	{
+		return std::make_shared<SpeechInstance>(this);
+	}
 };

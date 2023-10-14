@@ -67,6 +67,7 @@ namespace SoLoud
 		
 	public:
 		virtual AudioSourceInstance *createInstance();
+		virtual std::shared_ptr<AudioSourceInstance> createSharedInstance();
 		float mOctaveScale[10];
 	};
 };

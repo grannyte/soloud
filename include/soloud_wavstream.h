@@ -97,6 +97,7 @@ namespace SoLoud
 		result loadFile(File *aFile);
 		result loadFileToMem(File *aFile);		
 		virtual AudioSourceInstance *createInstance();
+		virtual std::shared_ptr<AudioSourceInstance> createSharedInstance();
 		time getLength();
 
 	public:

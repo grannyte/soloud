@@ -67,6 +67,7 @@ namespace SoLoud
 		result loadRawWave(float *aMem, unsigned int aLength, float aSamplerate = 44100.0f, unsigned int aChannels = 1, bool aCopy = false, bool aTakeOwnership = true);
 
 		virtual AudioSourceInstance *createInstance();
+		virtual std::shared_ptr<AudioSourceInstance> createSharedInstance();
 		time getLength();
 	};
 };

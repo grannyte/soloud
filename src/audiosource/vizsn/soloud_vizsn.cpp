@@ -208,7 +208,7 @@ namespace SoLoud
 		p1 = i;
 		return x;
 	}
-	VizsnInstance::VizsnInstance(Vizsn *aParent)
+	VizsnInstance::VizsnInstance(Vizsn* aParent)
 	{
 		mParent = aParent;
 		mPtr = 0;
@@ -232,7 +232,7 @@ namespace SoLoud
 	{
 	}
 
-	unsigned int VizsnInstance::getAudio(float *aBuffer, unsigned int aSamplesToRead, unsigned int /*aBufferSize*/)
+	unsigned int VizsnInstance::getAudio(float* aBuffer, unsigned int aSamplesToRead, unsigned int /*aBufferSize*/)
 	{
 		unsigned int idx = 0;
 		int i, j;
@@ -310,7 +310,7 @@ namespace SoLoud
 	}
 
 	float VizsnInstance::vcsrc(int aPitch, int aVoicetype)
-	{		
+	{
 		mA += aPitch;
 
 		if (mOrgv != aVoicetype)
@@ -324,7 +324,7 @@ namespace SoLoud
 		{
 		case 0:	return (mA & (256 + 128 + 32)) * 5 * 0.0002f;
 		case 1:	return (float)(sin(mA * 0.0002) * cos(mA * 0.0003) * 0.2f + ((rand() % 200 - 100) / 300.0f)); // ilmava
-		case 2: return (float)tan(mA*0.00002)*0.01f; // burpy
+		case 2: return (float)tan(mA * 0.00002) * 0.01f; // burpy
 		case 3: return ((mA & 65535) > 32768 ? 65535 : 0) * 0.00001f; // square wave
 		case 4: return (float)mA * (float)mA * 0.0000000002f; // kuisku
 		case 5:	mA += 3; mB++; return ((mA & 255) > ((mB >> 2) & 255)) ? 0.3f : 0.0f;
@@ -342,7 +342,7 @@ namespace SoLoud
 	}
 
 	float VizsnInstance::genwave()
-	{		
+	{
 		float s, o, noise, voice, glot, parglot;
 		int ob;
 
@@ -395,7 +395,7 @@ namespace SoLoud
 		return ob * (1.0f / 255.0f);
 	}
 
-	void VizsnInstance::setphone(VizsnBank *aB, char aP, float /*aPitch*/)
+	void VizsnInstance::setphone(VizsnBank* aB, char aP, float /*aPitch*/)
 	{
 		int i;
 		aB->frica = aB->aspir = aB->bypas = aB->breth = aB->voice = 0;
@@ -413,8 +413,8 @@ namespace SoLoud
 			if (aP < 8)
 			{
 				/* vokaali */
-				VizsnResonator *r = aB->r;
-				const float *s = vowtab[aP][0];
+				VizsnResonator* r = aB->r;
+				const float* s = vowtab[aP][0];
 
 				r[R1P].c = -0.95f; r[R2P].c = -0.93f; r[R3P].c = -0.88f; r[R4P].c = -0.67f;
 				r[RLP].a = 0.31f;  r[RLP].b = 1.35f;  r[RLP].c = -0.67f;
@@ -436,7 +436,7 @@ namespace SoLoud
 			else
 			{
 				/* v */
-				const float *v = voo[aP - 8];
+				const float* v = voo[aP - 8];
 
 				/*aB->voice = *v++; */ v++;
 				aB->aspir = *v++;
@@ -503,9 +503,14 @@ namespace SoLoud
 		stop();
 	}
 
-	AudioSourceInstance * Vizsn::createInstance()
+	AudioSourceInstance* Vizsn::createInstance()
 	{
 		return new VizsnInstance(this);
+	}
+
+	std::shared_ptr<AudioSourceInstance> Vizsn::createSharedInstance()
+	{
+		return std::make_shared<VizsnInstance>(this);
 	}
 
 	void Vizsn::setText(char *aText)

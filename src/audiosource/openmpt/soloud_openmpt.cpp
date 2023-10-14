@@ -150,5 +150,9 @@ namespace SoLoud
 	{
 		return new OpenmptInstance(this);
 	}
+	std::shared_ptr<AudioSourceInstance>  Openmpt::createSharedInstance()
+	{
+		return std::make_shared<OpenmptInstance>(this);
+	}
 
 };

@@ -219,5 +219,9 @@ namespace SoLoud
 	{
 		return new TedSidInstance(this);
 	}
+	std::shared_ptr<AudioSourceInstance> TedSid::createSharedInstance()
+	{
+		return std::make_shared<TedSidInstance>(this);
+	}
 
 };

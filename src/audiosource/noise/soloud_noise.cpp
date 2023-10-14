@@ -129,5 +129,9 @@ namespace SoLoud
 	{
 		return new NoiseInstance(this);
 	}
+	std::shared_ptr<AudioSourceInstance> Noise::createSharedInstance()
+	{
+		return std::make_shared<NoiseInstance>(this);
+	}
 
 };

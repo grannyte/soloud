@@ -54,6 +54,9 @@ namespace SoLoud
 	public:
 		Bus();
 		virtual BusInstance *createInstance();
+
+		virtual std::shared_ptr<AudioSourceInstance> createSharedInstance();
+
 		// Set filter. Set to NULL to clear the filter.
 		virtual void setFilter(unsigned int aFilterId, Filter *aFilter);
 		// Play sound through the bus

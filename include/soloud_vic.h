@@ -98,6 +98,7 @@ namespace SoLoud
 
 	public:
 		virtual AudioSourceInstance *createInstance();
+		virtual std::shared_ptr<AudioSourceInstance> createSharedInstance();
 		int				m_model;
 		float			m_clocks[4];		// base clock frequencies for oscillators, dependent on VIC model
 		unsigned char	m_regs[MAX_REGS];		

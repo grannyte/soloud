@@ -176,5 +176,9 @@ namespace SoLoud
 	{
 		return new AyInstance(this);
 	}
+	std::shared_ptr<AudioSourceInstance> Ay::createSharedInstance() 
+	{
+		return std::make_shared <AyInstance>(this);
+	}
 
 };

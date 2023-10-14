@@ -164,5 +164,9 @@ namespace SoLoud
 	{
 		return new VicInstance(this);
 	}
+	std::shared_ptr<AudioSourceInstance> Vic::createSharedInstance()
+	{
+		return std::make_shared<VicInstance>(this);
+	}
 
 };

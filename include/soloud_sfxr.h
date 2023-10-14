@@ -153,6 +153,7 @@ namespace SoLoud
 
 		result loadPreset(int aPresetNo, int aRandSeed);
 		virtual AudioSourceInstance *createInstance();
+		virtual std::shared_ptr<AudioSourceInstance> createSharedInstance();
 	};
 };
 

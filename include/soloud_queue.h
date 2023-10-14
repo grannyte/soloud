@@ -48,6 +48,7 @@ namespace SoLoud
 	public:
 		Queue();
 		virtual QueueInstance *createInstance();
+		virtual std::shared_ptr<AudioSourceInstance> createSharedInstance();
 		// Play sound through the queue
 		result play(AudioSource &aSound);
         // Number of audio sources queued for replay

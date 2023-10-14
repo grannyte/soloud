@@ -26,17 +26,17 @@ freely, subject to the following restrictions:
 
 namespace SoLoud
 {
-	QueueInstance::QueueInstance(Queue *aParent)
+	QueueInstance::QueueInstance(Queue* aParent)
 	{
 		mParent = aParent;
 		mFlags |= PROTECTED;
 	}
-	
-	unsigned int QueueInstance::getAudio(float *aBuffer, unsigned int aSamplesToRead, unsigned int aBufferSize)
+
+	unsigned int QueueInstance::getAudio(float* aBuffer, unsigned int aSamplesToRead, unsigned int aBufferSize)
 	{
 		if (mParent->mCount == 0)
 		{
-			return 0;			
+			return 0;
 		}
 		unsigned int copycount = aSamplesToRead;
 		unsigned int copyofs = 0;
@@ -77,8 +77,8 @@ namespace SoLoud
 		for (i = 0; i < SOLOUD_QUEUE_MAX; i++)
 			mSource[i] = 0;
 	}
-	
-	QueueInstance * Queue::createInstance()
+
+	QueueInstance* Queue::createInstance()
 	{
 		if (mInstance)
 		{
@@ -87,6 +87,17 @@ namespace SoLoud
 		}
 		mInstance = new QueueInstance(this);
 		return mInstance;
+	}
+	std::shared_ptr<AudioSourceInstance> Queue::createSharedInstance()
+	{
+		if (mInstance)
+		{
+			stop();
+			mInstance = 0;
+		}
+		auto instance = std::make_shared<QueueInstance>(this);
+		mInstance = instance.get();
+		return instance;
 	}
 
 	void Queue::findQueueHandle()
@@ -102,13 +113,13 @@ namespace SoLoud
 		}
 	}
 
-	result Queue::play(AudioSource &aSound)
+	result Queue::play(AudioSource& aSound)
 	{
 		if (!mSoloud)
 		{
 			return INVALID_PARAMETER;
 		}
-	
+
 		findQueueHandle();
 
 		if (mQueueHandle == 0)
@@ -123,7 +134,7 @@ namespace SoLoud
 			mSoloud->mAudioSourceID++;
 		}
 
-		SoLoud::AudioSourceInstance *instance = aSound.createInstance();
+		SoLoud::AudioSourceInstance* instance = aSound.createInstance();
 
 		if (instance == 0)
 		{
@@ -155,7 +166,7 @@ namespace SoLoud
 		return count;
 	}
 
-	bool Queue::isCurrentlyPlaying(AudioSource &aSound)
+	bool Queue::isCurrentlyPlaying(AudioSource& aSound)
 	{
 		if (mSoloud == 0 || mCount == 0 || aSound.mAudioSourceID == 0)
 			return false;
@@ -165,20 +176,20 @@ namespace SoLoud
 		return res;
 	}
 
-	result Queue::setParamsFromAudioSource(AudioSource &aSound)
+	result Queue::setParamsFromAudioSource(AudioSource& aSound)
 	{
 		mChannels = aSound.mChannels;
 		mBaseSamplerate = aSound.mBaseSamplerate;
 
-	    return SO_NO_ERROR;
+		return SO_NO_ERROR;
 	}
-	
+
 	result Queue::setParams(float aSamplerate, unsigned int aChannels)
 	{
-	    if (aChannels < 1 || aChannels > MAX_CHANNELS)
-	        return INVALID_PARAMETER;
+		if (aChannels < 1 || aChannels > MAX_CHANNELS)
+			return INVALID_PARAMETER;
 		mChannels = aChannels;
 		mBaseSamplerate = aSamplerate;
-	    return SO_NO_ERROR;
+		return SO_NO_ERROR;
 	}
 };

@@ -432,4 +432,8 @@ namespace SoLoud
 		return new MonotoneInstance(this);
 	}
 
+	std::shared_ptr<AudioSourceInstance> Monotone::createSharedInstance()
+{
+		return std::make_shared<MonotoneInstance>(this);
+	}
 };

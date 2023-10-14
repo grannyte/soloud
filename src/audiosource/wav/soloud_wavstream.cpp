@@ -670,6 +670,10 @@ namespace SoLoud
 	{
 		return new WavStreamInstance(this);
 	}
+	std::shared_ptr<AudioSourceInstance> WavStream::createSharedInstance()
+	{
+		return std::make_shared<WavStreamInstance>(this);
+	}
 
 	double WavStream::getLength()
 	{

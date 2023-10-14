@@ -78,6 +78,7 @@ namespace SoLoud
 		void setText(char *aText);
 	public:
 		virtual AudioSourceInstance *createInstance();
+		virtual std::shared_ptr<AudioSourceInstance> createSharedInstance();
 	};
 };
 
