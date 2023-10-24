@@ -202,7 +202,7 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalOptions>  %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/fp:contract   %(AdditionalOptions) </AdditionalOptions>
       <Optimization>MaxSpeed</Optimization>
       <AdditionalIncludeDirectories>..\..\src\audiosource;..\..\src\backend;..\..\src\core;..\..\src\c_api;..\..\src\filter;..\..\src\tools;..\..\src\audiosource\ay;..\..\src\audiosource\monotone;..\..\src\audiosource\noise;..\..\src\audiosource\openmpt;..\..\src\audiosource\sfxr;..\..\src\audiosource\speech;..\..\src\audiosource\tedsid;..\..\src\audiosource\vic;..\..\src\audiosource\vizsn;..\..\src\audiosource\wav;..\..\src\backend\alsa;..\..\src\backend\coreaudio;..\..\src\backend\jack;..\..\src\backend\miniaudio;..\..\src\backend\nosound;..\..\src\backend\null;..\..\src\backend\openal;..\..\src\backend\opensles;..\..\src\backend\oss;..\..\src\backend\portaudio;..\..\src\backend\sdl;..\..\src\backend\sdl2_static;..\..\src\backend\sdl_static;..\..\src\backend\vita_homebrew;..\..\src\backend\wasapi;..\..\src\backend\winmm;..\..\src\backend\xaudio2;..\..\src\tools\codegen;..\..\src\tools\lutgen;..\..\src\tools\resamplerlab;..\..\src\tools\sanity;..\..\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NDEBUG;WITH_WINMM;WITH_NULL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -226,8 +226,8 @@
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <ControlFlowGuard>false</ControlFlowGuard>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
-      <FloatingPointModel>Fast</FloatingPointModel>
-      <FloatingPointExceptions>false</FloatingPointExceptions>
+      <FloatingPointModel>Precise</FloatingPointModel>
+      <FloatingPointExceptions>true</FloatingPointExceptions>
       <CreateHotpatchableImage>false</CreateHotpatchableImage>
     </ClCompile>
     <ResourceCompile>
