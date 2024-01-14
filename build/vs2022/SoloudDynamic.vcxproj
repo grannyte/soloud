@@ -39,6 +39,7 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+    <EnableASAN>false</EnableASAN>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -157,10 +158,11 @@
       <SDLCheck>false</SDLCheck>
       <InlineFunctionExpansion>Disabled</InlineFunctionExpansion>
       <OmitFramePointers>false</OmitFramePointers>
-      <ControlFlowGuard>false</ControlFlowGuard>
+      <ControlFlowGuard>Guard</ControlFlowGuard>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <FloatingPointModel>Fast</FloatingPointModel>
       <FloatingPointExceptions>false</FloatingPointExceptions>
+      <EnableParallelCodeGeneration>false</EnableParallelCodeGeneration>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -238,7 +240,7 @@
       <ControlFlowGuard>false</ControlFlowGuard>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <FloatingPointModel>Precise</FloatingPointModel>
-      <FloatingPointExceptions>true</FloatingPointExceptions>
+      <FloatingPointExceptions>false</FloatingPointExceptions>
       <CreateHotpatchableImage>false</CreateHotpatchableImage>
     </ClCompile>
     <ResourceCompile>
