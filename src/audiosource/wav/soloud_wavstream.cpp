@@ -341,7 +341,12 @@ namespace SoLoud
 
 	result WavStreamInstance::seek(double aSeconds, float* mScratch, unsigned int mScratchSize)
 	{
-		if (mCodec.mOgg)
+		// mCodec is a union, so mCodec.mOgg is non-null for *any* loaded file type
+		// (it aliases whichever codec pointer is actually active) -- must gate on
+		// mParent->mFiletype like rewind() does below, or a WAV/FLAC/MP3 stream's
+		// codec pointer gets passed to stb_vorbis_seek() as a misinterpreted
+		// stb_vorbis*, corrupting memory.
+		if (mParent->mFiletype == WAVSTREAM_OGG && mCodec.mOgg)
 		{
 			int pos = (int)floor(mBaseSamplerate * aSeconds);
 			stb_vorbis_seek(mCodec.mOgg, pos);

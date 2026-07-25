@@ -24,6 +24,7 @@ freely, subject to the following restrictions:
 
 #include "soloud.h"
 #include "soloud_thread.h"
+#include "soloud_wasapi.h"
 
 #if !defined(WITH_WASAPI)
 
@@ -33,6 +34,10 @@ namespace SoLoud
 	{
 		return NOT_IMPLEMENTED;
 	}
+
+	std::vector<WASAPIDeviceInfo> WASAPI_enumerateDevices() { return {}; }
+	void WASAPI_setInitialDevice(const std::wstring &aDeviceId) {}
+	void WASAPI_requestDeviceChange(Soloud &aSoloud, const std::wstring &aDeviceId) {}
 };
 
 #else
@@ -40,6 +45,8 @@ namespace SoLoud
 #include <windows.h>
 #include <mmdeviceapi.h>
 #include <audioclient.h>
+#include <functiondiscoverykeys_devpkey.h>
+#include <propvarutil.h>
 
 #define SAFE_RELEASE(x) \
     if (0 != (x)) \
@@ -50,6 +57,20 @@ namespace SoLoud
 
 namespace SoLoud
 {
+	// Device the next init()/reset picks; empty = default render endpoint.
+	static std::wstring gPreferredDeviceId;
+
+	static HRESULT resolveDevice(IMMDeviceEnumerator *aEnumerator, IMMDevice **aDevice)
+	{
+		if (!gPreferredDeviceId.empty())
+		{
+			HRESULT res = aEnumerator->GetDevice(gPreferredDeviceId.c_str(), aDevice);
+			if (SUCCEEDED(res))
+				return res;
+		}
+		return aEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, aDevice);
+	}
+
     struct WASAPIData
     {
         IMMDeviceEnumerator *deviceEnumerator;
@@ -179,7 +200,7 @@ namespace SoLoud
 				SAFE_RELEASE(data->device);
 
 				// Recreate audio graph:
-				bool reinitFailed = FAILED(data->deviceEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, &data->device));
+				bool reinitFailed = FAILED(resolveDevice(data->deviceEnumerator, &data->device));
 				if (!reinitFailed)
 				{
 					reinitFailed = FAILED(data->device->Activate(__uuidof(IAudioClient),
@@ -195,31 +216,25 @@ namespace SoLoud
 				}
 				if (!reinitFailed)
 				{
-					// At this point, we really must use the same mixing rate SoLoud uses,
-					// because we can't change the sampling rate after initialization.
-					// This *can* make the recreation fail every time if the rates do not match,
-					// which makes this thread spin in a loop, trying to recreate everything.
-					if (mixFormat->wFormatTag == WAVE_FORMAT_EXTENSIBLE)
-					{
-						WAVEFORMATEXTENSIBLE* ext = reinterpret_cast<WAVEFORMATEXTENSIBLE*>(mixFormat);
-						format.nChannels = ext->Format.nChannels;
-						format.nSamplesPerSec = data->sampleRate;
-						format.wFormatTag = WAVE_FORMAT_PCM;
-						format.wBitsPerSample = sizeof(short) * 8;
-						format.nBlockAlign = (format.nChannels * format.wBitsPerSample) / 8;
-						format.nAvgBytesPerSec = format.nSamplesPerSec * format.nBlockAlign;
-					}
-					else
-					{
-						CopyMemory(&format, mixFormat, sizeof(WAVEFORMATEX));
-						format.nSamplesPerSec = data->sampleRate;
-					}
+					// Rate and channel count are fixed once SoLoud is initialized, so ask for
+					// exactly what the mixer produces and let WASAPI convert to the endpoint's
+					// own mix format. Taking the new device's channel count here instead would
+					// overrun the render buffer, and its rate would fail Initialize outright.
 					CoTaskMemFree(mixFormat);
+					format.wFormatTag = WAVE_FORMAT_PCM;
+					format.nChannels = data->channels;
+					format.nSamplesPerSec = data->sampleRate;
+					format.wBitsPerSample = sizeof(short) * 8;
+					format.nBlockAlign = (format.nChannels * format.wBitsPerSample) / 8;
+					format.nAvgBytesPerSec = format.nSamplesPerSec * format.nBlockAlign;
+					format.cbSize = 0;
 				}
 				if (!reinitFailed)
 				{
 					reinitFailed = FAILED(data->audioClient->Initialize(AUDCLNT_SHAREMODE_SHARED,
-						AUDCLNT_STREAMFLAGS_EVENTCALLBACK,
+						AUDCLNT_STREAMFLAGS_EVENTCALLBACK |
+						AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM |
+						AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
 						data->duration, 0, &format, 0));
 				}
 				data->bufferFrames = 0;
@@ -302,8 +317,7 @@ namespace SoLoud
         }
 		data->notificationClient = new MMNotificationClient(data);
 		/*HRESULT result = */data->deviceEnumerator->RegisterEndpointNotificationCallback(data->notificationClient);
-        if (FAILED(data->deviceEnumerator->GetDefaultAudioEndpoint(eRender, eConsole, 
-                                                                   &data->device))) 
+        if (FAILED(resolveDevice(data->deviceEnumerator, &data->device)))
         {
             return UNKNOWN_ERROR;
         }
@@ -371,5 +385,76 @@ namespace SoLoud
         aSoloud->mBackendString = "WASAPI";
         return 0;
     }
+
+	std::vector<WASAPIDeviceInfo> WASAPI_enumerateDevices()
+	{
+		std::vector<WASAPIDeviceInfo> result;
+		// Called before init(), so COM may not be up on this thread yet.
+		HRESULT comInit = CoInitializeEx(0, COINIT_MULTITHREADED);
+		IMMDeviceEnumerator *enumerator = 0;
+		if (FAILED(CoCreateInstance(__uuidof(MMDeviceEnumerator), 0, CLSCTX_ALL,
+			__uuidof(IMMDeviceEnumerator), reinterpret_cast<void**>(&enumerator))))
+		{
+			if (SUCCEEDED(comInit))
+				CoUninitialize();
+			return result;
+		}
+
+		IMMDeviceCollection *collection = 0;
+		if (SUCCEEDED(enumerator->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &collection)))
+		{
+			UINT count = 0;
+			collection->GetCount(&count);
+			for (UINT i = 0; i < count; i++)
+			{
+				IMMDevice *device = 0;
+				if (FAILED(collection->Item(i, &device)))
+					continue;
+
+				WASAPIDeviceInfo info;
+				LPWSTR id = 0;
+				if (SUCCEEDED(device->GetId(&id)))
+				{
+					info.id = id;
+					CoTaskMemFree(id);
+				}
+
+				IPropertyStore *store = 0;
+				if (SUCCEEDED(device->OpenPropertyStore(STGM_READ, &store)))
+				{
+					PROPVARIANT name;
+					PropVariantInit(&name);
+					if (SUCCEEDED(store->GetValue(PKEY_Device_FriendlyName, &name)) && name.pwszVal)
+						info.name = name.pwszVal;
+					PropVariantClear(&name);
+					store->Release();
+				}
+				device->Release();
+
+				if (!info.id.empty())
+					result.push_back(info);
+			}
+			collection->Release();
+		}
+		enumerator->Release();
+		if (SUCCEEDED(comInit))
+			CoUninitialize();
+		return result;
+	}
+
+	void WASAPI_setInitialDevice(const std::wstring &aDeviceId)
+	{
+		gPreferredDeviceId = aDeviceId;
+	}
+
+	void WASAPI_requestDeviceChange(Soloud &aSoloud, const std::wstring &aDeviceId)
+	{
+		gPreferredDeviceId = aDeviceId;
+		WASAPIData *data = static_cast<WASAPIData*>(aSoloud.mBackendData);
+		if (0 == data)
+			return;
+		data->resetRequired = true;
+		SetEvent(data->bufferEndEvent);
+	}
 };
 #endif
