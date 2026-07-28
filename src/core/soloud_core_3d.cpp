@@ -147,7 +147,9 @@ namespace SoLoud
 			return 1.0f;
 		float vls = aDeltaPos.dot(aDstVel) / deltamag;
 		float vss = aDeltaPos.dot(aSrcVel) / deltamag;
-		float maxspeed = aSoundSpeed / aFactor;
+		// clamp below aSoundSpeed/aFactor; at exactly that speed the divisor below is zero,
+		// which gives inf, or nan when the dividend is zero too (both speeds clamped).
+		float maxspeed = (aSoundSpeed / aFactor) * 0.99f;
 		vss = MIN(vss, maxspeed);
 		vls = MIN(vls, maxspeed);
 		return (aSoundSpeed - aFactor * vls) / (aSoundSpeed - aFactor * vss);

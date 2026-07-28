@@ -23,6 +23,8 @@ freely, subject to the following restrictions:
 */
 
 #include "soloud.h"
+#include <cassert>
+#include <climits>
 
 namespace SoLoud
 {
@@ -166,7 +168,15 @@ namespace SoLoud
 			}
 			offset = aSeconds;
 		}
-		int samples_to_discard = (int)floor(mSamplerate * offset);
+		double samples_to_discard_d = floor(mSamplerate * offset);
+		// (int)floor(mSamplerate * offset) is UB if the product is out of int range or
+		// NaN (MSVC yields INT_MIN, which then becomes 2147483648 once passed through
+		// getAudio()'s unsigned int params - a real crash seen via a huge memcpy in
+		// WavInstance::getAudio). Assert here instead, with the values that produced it.
+		assert(samples_to_discard_d == samples_to_discard_d /* not NaN */
+			&& samples_to_discard_d >= (double)INT_MIN && samples_to_discard_d <= (double)INT_MAX
+			&& "AudioSourceInstance::seek: mSamplerate * offset out of int range or NaN");
+		int samples_to_discard = (int)samples_to_discard_d;
 
 		while (samples_to_discard)
 		{

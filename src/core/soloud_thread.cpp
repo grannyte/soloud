@@ -22,6 +22,10 @@ freely, subject to the following restrictions:
    distribution.
 */
 
+#include <cstdio>
+#include <mutex>
+#include <unordered_map>
+
 #if defined(_WIN32)||defined(_WIN64)
 #include <windows.h>
 #else
@@ -58,12 +62,30 @@ namespace SoLoud
 			delete cs;
 		}
 
+		// Debug-only: tracks which thread currently owns each critical section, so a
+		// "waiting" print can name the culprit directly instead of requiring a scan
+		// through the log for the last unmatched "acquired".
+		static std::mutex g_ownerMapMutex;
+		static std::unordered_map<void*, DWORD> g_owners;
+
 		void lockMutex(void *aHandle)
 		{
 			CRITICAL_SECTION *cs = (CRITICAL_SECTION*)aHandle;
 			if (cs)
 			{
+				DWORD owner = 0;
+				{
+					std::lock_guard<std::mutex> lock(g_ownerMapMutex);
+					auto it = g_owners.find(cs);
+					owner = (it != g_owners.end()) ? it->second : 0;
+				}
+				//printf("[SoLoud] tid=%lu waiting  cs=%p owner=%lu\n", GetCurrentThreadId(), (void*)cs, owner);
 				EnterCriticalSection(cs);
+				{
+					std::lock_guard<std::mutex> lock(g_ownerMapMutex);
+					g_owners[cs] = GetCurrentThreadId();
+				}
+				//printf("[SoLoud] tid=%lu acquired cs=%p\n", GetCurrentThreadId(), (void*)cs);
 			}
 		}
 
@@ -72,6 +94,11 @@ namespace SoLoud
 			CRITICAL_SECTION *cs = (CRITICAL_SECTION*)aHandle;
 			if (cs)
 			{
+				{
+					//std::lock_guard<std::mutex> lock(g_ownerMapMutex);
+					//g_owners.erase(cs);
+				}
+				//printf("[SoLoud] tid=%lu released cs=%p\n", GetCurrentThreadId(), (void*)cs);
 				LeaveCriticalSection(cs);
 			}
 		}
