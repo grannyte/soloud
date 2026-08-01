@@ -1599,6 +1599,48 @@ namespace SoLoud
 			aVoice->mCurrentChannelVolume[k] = pand[k];
 	}
 
+	// Hang watchdog. The mix loops below can fail to make progress ("The value may be zero" on
+	// writesamples, and a looping voice that reads back 0 samples), and the mix thread holds
+	// mAudioThreadMutex throughout, so a stuck voice freezes every other thread that touches
+	// audio. Rather than hang, name the voice and bail out of this mix. Capped at 40 reports so a
+	// repeat offender does not itself become the stall. Goes to the debugger output too: the game
+	// is a windowed app, so stdout alone is often nowhere.
+#if defined(_WIN32)
+	extern "C" __declspec(dllimport) void __stdcall OutputDebugStringA(const char *);
+#endif
+
+	static void reportStuckVoice(const char *aWhere, AudioSourceInstance *aVoice,
+		unsigned int aStepFixed, unsigned int aOutOfs, unsigned int aSamplesToRead)
+	{
+		static unsigned int reportsLeft = 40;
+		if (reportsLeft == 0)
+			return;
+		reportsLeft--;
+
+		char buf[768];
+		snprintf(buf, sizeof(buf),
+			"SoLoud STUCK VOICE in %s: audioSourceID=%u flags=0x%x looping=%d\n"
+			"  samplerate=%f base=%f overallRelativePlaySpeed=%f setRelativePlaySpeed=%f\n"
+			"  step_fixed=%u outofs=%u samplesToRead=%u srcOffset=%u leftover=%u\n"
+			"  streamPosition=%f loopPoint=%f loopCount=%u channels=%u ended=%d overallVolume=%f\n",
+			aWhere, aVoice->mAudioSourceID, aVoice->mFlags,
+			(aVoice->mFlags & AudioSourceInstance::LOOPING) ? 1 : 0,
+			aVoice->mSamplerate, aVoice->mBaseSamplerate,
+			aVoice->mOverallRelativePlaySpeed, aVoice->mSetRelativePlaySpeed,
+			aStepFixed, aOutOfs, aSamplesToRead, aVoice->mSrcOffset, aVoice->mLeftoverSamples,
+			aVoice->mStreamPosition, aVoice->mLoopPoint, aVoice->mLoopCount, aVoice->mChannels,
+			aVoice->hasEnded() ? 1 : 0, aVoice->mOverallVolume);
+		printf("%s", buf);
+		fflush(stdout);
+#if defined(_WIN32)
+		OutputDebugStringA(buf);
+#endif
+	}
+
+	// One output block can never need more than this many passes: each pass either writes at
+	// least one output sample or refills SAMPLE_GRANULARITY source samples. Generous by ~4x.
+	#define SOLOUD_MIX_MAX_PASSES(aSamplesToRead) ((aSamplesToRead) * 4 + 1024)
+
 	void Soloud::mixBus_internal(float *aBuffer, unsigned int aSamplesToRead, unsigned int aBufferSize, float *aScratch, unsigned int aBus, float aSamplerate, unsigned int aChannels, unsigned int aResampler)
 	{
 		unsigned int i, j;
@@ -1648,8 +1690,15 @@ namespace SoLoud
 					}
 				}												
 
+				unsigned int mixPasses = 0;
 				while (step_fixed != 0 && outofs < aSamplesToRead)
 				{
+					if (++mixPasses > SOLOUD_MIX_MAX_PASSES(aSamplesToRead))
+					{
+						reportStuckVoice("mixBus_internal", voice, step_fixed, outofs, aSamplesToRead);
+						break;
+					}
+
 					if (voice->mLeftoverSamples == 0)
 					{
 						// Swap resample buffers (ping-pong)
@@ -1667,12 +1716,18 @@ namespace SoLoud
 							{
 								if (voice->mFlags & AudioSourceInstance::LOOPING)
 								{
+									unsigned int refillPasses = 0;
 									while (readcount < SAMPLE_GRANULARITY && voice->seek(voice->mLoopPoint, mScratch.mData, mScratchSize) == SO_NO_ERROR)
 									{
 										voice->mLoopCount++;
 										int inc = voice->getAudio(voice->mResampleData[0] + readcount, SAMPLE_GRANULARITY - readcount, SAMPLE_GRANULARITY);
 										readcount += inc;
 										if (inc == 0) break;
+										if (++refillPasses > SAMPLE_GRANULARITY)
+										{
+											reportStuckVoice("loop refill", voice, step_fixed, outofs, aSamplesToRead);
+											break;
+										}
 									}
 								}
 							}
@@ -1825,8 +1880,15 @@ namespace SoLoud
 					}
 				}
 
+				unsigned int mixPasses = 0;
 				while (step_fixed != 0 && outofs < aSamplesToRead)
 				{
+					if (++mixPasses > SOLOUD_MIX_MAX_PASSES(aSamplesToRead))
+					{
+						reportStuckVoice("mixBus_internal", voice, step_fixed, outofs, aSamplesToRead);
+						break;
+					}
+
 					if (voice->mLeftoverSamples == 0)
 					{
 						// Swap resample buffers (ping-pong)
@@ -1844,10 +1906,21 @@ namespace SoLoud
 							{
 								if (voice->mFlags & AudioSourceInstance::LOOPING)
 								{
+									unsigned int refillPasses = 0;
 									while (readcount < SAMPLE_GRANULARITY && voice->seek(voice->mLoopPoint, mScratch.mData, mScratchSize) == SO_NO_ERROR)
 									{
 										voice->mLoopCount++;
-										readcount += voice->getAudio(voice->mResampleData[0] + readcount, SAMPLE_GRANULARITY - readcount, SAMPLE_GRANULARITY);
+										int inc = voice->getAudio(voice->mResampleData[0] + readcount, SAMPLE_GRANULARITY - readcount, SAMPLE_GRANULARITY);
+										readcount += inc;
+										// A looping source that seeks fine but yields no samples would spin here
+										// forever holding mAudioThreadMutex. Same guard as the other copy of this
+										// block above.
+										if (inc == 0) break;
+										if (++refillPasses > SAMPLE_GRANULARITY)
+										{
+											reportStuckVoice("loop refill", voice, step_fixed, outofs, aSamplesToRead);
+											break;
+										}
 									}
 								}
 							}

@@ -176,6 +176,13 @@ namespace SoLoud
 		assert(samples_to_discard_d == samples_to_discard_d /* not NaN */
 			&& samples_to_discard_d >= (double)INT_MIN && samples_to_discard_d <= (double)INT_MAX
 			&& "AudioSourceInstance::seek: mSamplerate * offset out of int range or NaN");
+		// The assert is compiled out in release, where the bad cast still happens. Clamp instead:
+		// negative feeds getAudio's unsigned params a ~2GB count, and NaN fails every comparison
+		// so it must be tested for explicitly.
+		if (!(samples_to_discard_d >= 0))
+			samples_to_discard_d = 0;
+		else if (samples_to_discard_d > (double)INT_MAX)
+			samples_to_discard_d = (double)INT_MAX;
 		int samples_to_discard = (int)samples_to_discard_d;
 
 		while (samples_to_discard)
@@ -183,8 +190,12 @@ namespace SoLoud
 			int samples = mScratchSize / mChannels;
 			if (samples > samples_to_discard)
 				samples = samples_to_discard;
-			getAudio(mScratch, samples, samples);
+			// getAudio returning short means we hit the end; discarding the rest is pointless and
+			// would spin here while the mix thread holds mAudioThreadMutex.
+			unsigned int got = getAudio(mScratch, samples, samples);
 			samples_to_discard -= samples;
+			if (got == 0)
+				break;
 		}
 		mStreamPosition = aSeconds;
 		return SO_NO_ERROR;
