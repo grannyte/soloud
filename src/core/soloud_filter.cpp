@@ -152,6 +152,10 @@ namespace SoLoud
 
 	void FilterInstance::filter(float *aBuffer, unsigned int aSamples, unsigned int aBufferSize, unsigned int aChannels, float aSamplerate, double aTime)
 	{
+		// Wet 0 with no fader on it can't change a sample; skip the whole per-sample pass.
+		if (mNumParams > 0 && mParam[0] == 0 && mParamFader[0].mActive <= 0)
+			return;
+
 		unsigned int i;
 		for (i = 0; i < aChannels; i++)
 		{

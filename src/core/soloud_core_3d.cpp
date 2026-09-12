@@ -24,73 +24,12 @@ freely, subject to the following restrictions:
 
 #include <math.h>
 #include "soloud_internal.h"
+#include "soloud_3d_math.h"
 
 // 3d audio operations
 
 namespace SoLoud
 {
-	struct vec3
-	{
-		float mX, mY, mZ;
-
-		bool null()
-		{
-			if (mX == 0 && mY == 0 && mZ == 0)
-				return true;
-			return false;
-		}
-
-		void neg()
-		{
-			mX = -mX;
-			mY = -mY;
-			mZ = -mZ;
-		}
-
-		float mag()
-		{
-			return (float)sqrt(mX * mX + mY * mY + mZ * mZ);
-		}
-		
-		void normalize()
-		{
-			float m = mag();
-			if (m == 0)
-			{
-				mX = mY = mZ = 0;
-				return;
-			}
-			mX /= m;
-			mY /= m;
-			mZ /= m;
-		}
-		
-		float dot(const vec3 &a)
-		{
-			return mX * a.mX + mY * a.mY + mZ * a.mZ;
-		}
-		
-		vec3 sub(const vec3 &a)
-		{
-			vec3 r;
-			r.mX = mX - a.mX;
-			r.mY = mY - a.mY;
-			r.mZ = mZ - a.mZ;
-			return r;
-		}
-
-		vec3 cross(const vec3 &a)
-		{
-			vec3 r;
-
-			r.mX = mY * a.mZ - a.mY * mZ;
-			r.mY = mZ * a.mX - a.mZ * mX;
-			r.mZ = mX * a.mY - a.mX * mY;
-
-			return r;
-		}
-	};
-
 	struct mat3
 	{
 		vec3 m[3];
@@ -140,20 +79,7 @@ namespace SoLoud
 #define MAX(a,b) ((a) > (b)) ? (a) : (b)
 #endif
 
-	float doppler(vec3 aDeltaPos, const vec3 &aSrcVel, const vec3 &aDstVel, float aFactor, float aSoundSpeed)
-	{
-		float deltamag = aDeltaPos.mag();
-		if (deltamag == 0)
-			return 1.0f;
-		float vls = aDeltaPos.dot(aDstVel) / deltamag;
-		float vss = aDeltaPos.dot(aSrcVel) / deltamag;
-		// clamp below aSoundSpeed/aFactor; at exactly that speed the divisor below is zero,
-		// which gives inf, or nan when the dividend is zero too (both speeds clamped).
-		float maxspeed = (aSoundSpeed / aFactor) * 0.99f;
-		vss = MIN(vss, maxspeed);
-		vls = MIN(vls, maxspeed);
-		return (aSoundSpeed - aFactor * vls) / (aSoundSpeed - aFactor * vss);
-	}
+	// doppler() moved to soloud_3d_math.h so hosts can unit-test the ratio band.
 
 	float attenuateInvDistance(float aDistance, float aMinDistance, float aMaxDistance, float aRolloffFactor)
 	{
